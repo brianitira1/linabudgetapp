@@ -15,6 +15,13 @@
     <div class="container">
       <h2>Budget App</h2>
       <div class="error_message"></div>
+      <div class="currency-selector">
+        <label for="currency">Select Currency:</label>
+        <select id="currency-select">
+          <option value="USD">USD</option>
+          <option value="KSH">KSH</option>
+        </select>
+      </div>
       <div class="budget_content">
         <div class="ur_budget">
           <form id="budget-form">
@@ -55,21 +62,21 @@
           <li>
             <i class="bx bx-money"></i>
             <span class="info">
-              <h3><span>$</span><span class="budget_card">0</span></h3>
+              <h3><span id="budget-currency"></span><span class="budget_card">0</span></h3>
               <p>Budget</p>
             </span>
           </li>
           <li>
             <i class="bx bx-credit-card"></i>
             <span class="info">
-              <h3><span>$</span><span class="expenses_card">0</span></h3>
+              <h3><span id="expenses-currency"></span><span class="expenses_card">0</span></h3>
               <p>Expenses</p>
             </span>
           </li>
           <li>
             <i class="bx bx-dollar"></i>
             <span class="info">
-              <h3><span>$</span><span class="balance_card">0</span></h3>
+              <h3><span id="balance-currency"></span><span class="balance_card">0</span></h3>
               <p>Balance</p>
             </span>
           </li>

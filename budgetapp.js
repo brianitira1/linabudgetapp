@@ -9,12 +9,17 @@ document.addEventListener("DOMContentLoaded", function () {
   const expensesCard = document.querySelector(".expenses_card");
   const balanceCard = document.querySelector(".balance_card");
   const tblRecord = document.querySelector(".tbl_tr_content");
+  const currencySelect = document.getElementById("currency-select");
+  const budgetCurrencySpan = document.getElementById("budget-currency");
+  const expensesCurrencySpan = document.getElementById("expenses-currency");
+  const balanceCurrencySpan = document.getElementById("balance-currency");
 
-  let budget = 0;
-  let totalExpenses = 0;
-  let balance = 0;
-  let itemId = 0;
-  let expensesList = []; // Array to store all expenses
+  let budget = parseFloat(localStorage.getItem("budget")) || 0;
+  let totalExpenses = parseFloat(localStorage.getItem("totalExpenses")) || 0;
+  let balance = parseFloat(localStorage.getItem("balance")) || 0;
+  let itemId = parseInt(localStorage.getItem("itemId")) || 0;
+  let expensesList = JSON.parse(localStorage.getItem("expensesList")) || [];
+  let selectedCurrency = localStorage.getItem("selectedCurrency") || "USD";
 
   // Check if the user is logged in
   const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -29,6 +34,19 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = "/login.html";
   }
 
+  // Populate expenses list on page load
+  expensesList.forEach((expense) => {
+    addExpensesToUI(expense.description, expense.amount, expense.id);
+  });
+
+  // Event listener for currency selection
+  currencySelect.addEventListener("change", function () {
+    selectedCurrency = currencySelect.value;
+    updateCurrencySymbols();
+    updateBudget();
+    saveToLocalStorage();
+  });
+
   // Event listener for budget calculation
   budgetForm.addEventListener("submit", function (event) {
     event.preventDefault();
@@ -39,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
       budget = budgetValue;
       updateBudget();
       saveBudgetData(); // Save the budget data to the server
+      saveToLocalStorage();
       budgetInput.value = "";
       errorMessage.innerHTML = "";
     }
@@ -54,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       addExpenses(expensesDesc, expensesAmount);
       saveBudgetData(); // Save the budget data to the server
+      saveToLocalStorage();
       expensesDescInput.value = "";
       expensesAmountInput.value = "";
       errorMessage.innerHTML = "";
@@ -63,8 +83,22 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to update budget summary
   function updateBudget() {
     budgetCard.textContent = budget.toFixed(2);
+    expensesCard.textContent = totalExpenses.toFixed(2);
     balance = budget - totalExpenses;
     balanceCard.textContent = balance.toFixed(2);
+  }
+
+  // Function to update currency symbols
+  function updateCurrencySymbols() {
+    if (selectedCurrency === "USD") {
+      budgetCurrencySpan.textContent = "$";
+      expensesCurrencySpan.textContent = "$";
+      balanceCurrencySpan.textContent = "$";
+    } else if (selectedCurrency === "KSH") {
+      budgetCurrencySpan.textContent = "KSh";
+      expensesCurrencySpan.textContent = "KSh";
+      balanceCurrencySpan.textContent = "KSh";
+    }
   }
 
   // Function to add event listeners to edit and delete buttons
@@ -90,6 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
         balanceCard.textContent = balance.toFixed(2);
 
         saveBudgetData(); // Save the updated budget data to the server
+        saveToLocalStorage();
       }
     });
 
@@ -97,12 +132,12 @@ document.addEventListener("DOMContentLoaded", function () {
     deleteButton.addEventListener("click", function () {
       const index = expensesList.findIndex((item) => item.id === itemId);
       if (index !== -1) {
-        expensesList.splice(index, 1);
+        expensesList.splice(index, 1); // Remove the expense from the expensesList
 
         tblRecord.removeChild(li);
 
         totalExpenses -= parseFloat(
-          li.children[2].textContent.replace("$", "")
+          li.children[2].textContent.replace(/[\$KSh]/g, "")
         );
         expensesCard.textContent = totalExpenses.toFixed(2);
 
@@ -111,6 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         deleteExpenseFromServer(itemId); // Delete the expense from the server
         saveBudgetData(); // Save the updated budget data to the server
+        saveToLocalStorage(); // Save the updated data to localStorage
       }
     });
   }
@@ -134,11 +170,16 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("Error:", error);
       });
 
+    addExpensesToUI(description, amount, ++itemId);
+  }
+
+  // Function to add expenses to the UI
+  function addExpensesToUI(description, amount, id) {
     const li = document.createElement("li");
     li.innerHTML = `
-            <li>${++itemId}</li>
+            <li>${id}</li>
             <li>${description}</li>
-            <li>$${amount.toFixed(2)}</li>
+            <li>${selectedCurrency === "USD" ? "$" : "KSh"}${amount.toFixed(2)}</li>
             <li>
                 <button type="button" class="btn_edit">Edit</button>
                 <button type="button" class="btn_delete">Delete</button>
@@ -148,10 +189,8 @@ document.addEventListener("DOMContentLoaded", function () {
     totalExpenses += amount;
     expensesCard.textContent = totalExpenses.toFixed(2);
     updateBudget();
-    // Add expense to the list
-    expensesList.push({ id: itemId, description: description, amount: amount });
-    // Add event listeners to edit and delete buttons
-    addEventListenersToButtons(li, itemId);
+    expensesList.push({ id, description, amount });
+    addEventListenersToButtons(li, id);
   }
 
   // Function to show error message
@@ -197,8 +236,7 @@ document.addEventListener("DOMContentLoaded", function () {
           totalExpenses = data.expenses;
           balance = data.balance;
           updateBudget();
-         
-        
+          updateCurrencySymbols();
         }
       })
       .catch((error) => {
@@ -218,5 +256,15 @@ document.addEventListener("DOMContentLoaded", function () {
       .catch((error) => {
         console.error("Error:", error);
       });
+  }
+
+  // Function to save data to localStorage
+  function saveToLocalStorage() {
+    localStorage.setItem("budget", budget);
+    localStorage.setItem("totalExpenses", totalExpenses);
+    localStorage.setItem("balance", balance);
+    localStorage.setItem("itemId", itemId);
+    localStorage.setItem("expensesList", JSON.stringify(expensesList));
+    localStorage.setItem("selectedCurrency", selectedCurrency);
   }
 });
