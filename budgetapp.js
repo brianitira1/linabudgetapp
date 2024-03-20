@@ -1,5 +1,3 @@
-"use strict";
-
 document.addEventListener("DOMContentLoaded", function () {
   const budgetInput = document.getElementById("budget-input");
   const expensesDescInput = document.getElementById("expenses-desc");
@@ -18,6 +16,19 @@ document.addEventListener("DOMContentLoaded", function () {
   let itemId = 0;
   let expensesList = []; // Array to store all expenses
 
+  // Check if the user is logged in
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  const userId = localStorage.getItem("userId");
+  const username = localStorage.getItem("username");
+
+  if (isLoggedIn) {
+    // Fetch the user's budget data from the server
+    fetchBudgetData();
+  } else {
+    // Redirect the user to the login page
+    window.location.href = "/login.html";
+  }
+
   // Event listener for budget calculation
   budgetForm.addEventListener("submit", function (event) {
     event.preventDefault();
@@ -27,6 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       budget = budgetValue;
       updateBudget();
+      saveBudgetData(); // Save the budget data to the server
       budgetInput.value = "";
       errorMessage.innerHTML = "";
     }
@@ -41,6 +53,7 @@ document.addEventListener("DOMContentLoaded", function () {
       showError("Please enter a valid expenses description and amount.");
     } else {
       addExpenses(expensesDesc, expensesAmount);
+      saveBudgetData(); // Save the budget data to the server
       expensesDescInput.value = "";
       expensesAmountInput.value = "";
       errorMessage.innerHTML = "";
@@ -75,6 +88,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         balance = budget - totalExpenses;
         balanceCard.textContent = balance.toFixed(2);
+
+        saveBudgetData(); // Save the updated budget data to the server
       }
     });
 
@@ -93,12 +108,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
         balance = budget - totalExpenses;
         balanceCard.textContent = balance.toFixed(2);
+
+        deleteExpenseFromServer(itemId); // Delete the expense from the server
+        saveBudgetData(); // Save the updated budget data to the server
       }
     });
   }
 
   // Function to add expenses
   function addExpenses(description, amount) {
+    const userId = localStorage.getItem("userId");
+
+    fetch("http://localhost:3000/expenses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId, description, amount }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+
     const li = document.createElement("li");
     li.innerHTML = `
             <li>${++itemId}</li>
@@ -122,5 +157,66 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to show error message
   function showError(message) {
     errorMessage.innerHTML = `<p>${message}</p>`;
+  }
+
+  // Function to save budget data to the server
+  function saveBudgetData() {
+    const userId = localStorage.getItem("userId");
+    const budgetData = {
+      userId: userId,
+      budget: budget,
+      expenses: totalExpenses,
+      balance: balance,
+    };
+
+    fetch("http://localhost:3000/budget", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(budgetData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  // Function to fetch budget data from the server
+  function fetchBudgetData() {
+    fetch("http://localhost:3000/budget")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          console.error(data.error);
+        } else {
+          budget = data.budget;
+          totalExpenses = data.expenses;
+          balance = data.balance;
+          updateBudget();
+         
+        
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  // Function to delete an expense from the server
+  function deleteExpenseFromServer(expenseId) {
+    fetch(`http://localhost:3000/expenses/${expenseId}`, {
+      method: "DELETE",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
   }
 });
