@@ -14,37 +14,30 @@ document.addEventListener("DOMContentLoaded", function () {
   const expensesCurrencySpan = document.getElementById("expenses-currency");
   const balanceCurrencySpan = document.getElementById("balance-currency");
 
-  let budget = parseFloat(localStorage.getItem("budget")) || 0;
-  let totalExpenses = parseFloat(localStorage.getItem("totalExpenses")) || 0;
-  let balance = parseFloat(localStorage.getItem("balance")) || 0;
-  let itemId = parseInt(localStorage.getItem("itemId")) || 0;
-  let expensesList = JSON.parse(localStorage.getItem("expensesList")) || [];
-  let selectedCurrency = localStorage.getItem("selectedCurrency") || "USD";
+  let budget = 0;
+  let totalExpenses = 0;
+  let balance = 0;
+  let itemId = 0;
+  let expensesList = [];
+  let selectedCurrency = "USD";
+  const userId = session.userId; // You need to replace this with the actual user ID from your authentication system
 
   // Check if the user is logged in
-  const isLoggedIn = localStorage.getItem("isLoggedIn");
-  const userId = localStorage.getItem("userId");
-  const username = localStorage.getItem("username");
+  const isLoggedIn = true; // You need to replace this with your actual login check
 
   if (isLoggedIn) {
     // Fetch the user's budget data from the server
-    fetchBudgetData();
+    fetchBudgetData(userId);
   } else {
     // Redirect the user to the login page
     window.location.href = "/login.html";
   }
-
-  // Populate expenses list on page load
-  expensesList.forEach((expense) => {
-    addExpensesToUI(expense.description, expense.amount, expense.id);
-  });
 
   // Event listener for currency selection
   currencySelect.addEventListener("change", function () {
     selectedCurrency = currencySelect.value;
     updateCurrencySymbols();
     updateBudget();
-    saveToLocalStorage();
   });
 
   // Event listener for budget calculation
@@ -56,8 +49,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       budget = budgetValue;
       updateBudget();
-      saveBudgetData(); // Save the budget data to the server
-      saveToLocalStorage();
+      saveBudgetData(userId); // Save the budget data to the server
       budgetInput.value = "";
       errorMessage.innerHTML = "";
     }
@@ -71,9 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (expensesDesc === "" || isNaN(expensesAmount) || expensesAmount <= 0) {
       showError("Please enter a valid expenses description and amount.");
     } else {
-      addExpenses(expensesDesc, expensesAmount);
-      saveBudgetData(); // Save the budget data to the server
-      saveToLocalStorage();
+      addExpenses(userId, expensesDesc, expensesAmount);
       expensesDescInput.value = "";
       expensesAmountInput.value = "";
       errorMessage.innerHTML = "";
@@ -101,76 +91,54 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Function to add event listeners to edit and delete buttons
-  function addEventListenersToButtons(li, itemId) {
-    const editButton = li.querySelector(".btn_edit");
-    const deleteButton = li.querySelector(".btn_delete");
-
-    // Edit button event listener
-    editButton.addEventListener("click", function () {
-      const expense = expensesList.find((item) => item.id === itemId);
-      if (expense) {
-        expensesDescInput.value = expense.description;
-        expensesAmountInput.value = expense.amount;
-
-        expensesList = expensesList.filter((item) => item.id !== itemId);
-
-        tblRecord.removeChild(li);
-
-        totalExpenses -= expense.amount;
-        expensesCard.textContent = totalExpenses.toFixed(2);
-
-        balance = budget - totalExpenses;
-        balanceCard.textContent = balance.toFixed(2);
-
-        saveBudgetData(); // Save the updated budget data to the server
-        saveToLocalStorage();
-      }
-    });
-
-    // Delete button event listener
-    deleteButton.addEventListener("click", function () {
-      const index = expensesList.findIndex((item) => item.id === itemId);
-      if (index !== -1) {
-        expensesList.splice(index, 1); // Remove the expense from the expensesList
-
-        tblRecord.removeChild(li);
-
-        totalExpenses -= parseFloat(
-          li.children[2].textContent.replace(/[\$KSh]/g, "")
-        );
-        expensesCard.textContent = totalExpenses.toFixed(2);
-
-        balance = budget - totalExpenses;
-        balanceCard.textContent = balance.toFixed(2);
-
-        deleteExpenseFromServer(itemId); // Delete the expense from the server
-        saveBudgetData(); // Save the updated budget data to the server
-        saveToLocalStorage(); // Save the updated data to localStorage
-      }
-    });
-  }
-
   // Function to add expenses
-  function addExpenses(description, amount) {
-    const userId = localStorage.getItem("userId");
+  function addExpenses(userId, description, amount) {
+    const expense = { id: ++itemId, description, amount, userId };
 
     fetch("http://localhost:3000/expenses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ userId, description, amount }),
+      body: JSON.stringify(expense),
     })
       .then((response) => response.json())
       .then((data) => {
         console.log(data.message);
+        // Update UI or perform any necessary actions after adding expenses
+        // For example, you can call a function to update the UI here
+        updateExpensesUI();
       })
       .catch((error) => {
         console.error("Error:", error);
       });
+  }
 
-    addExpensesToUI(description, amount, ++itemId);
+  // Function to update
+  // Function to update expenses UI for the current user
+  function updateExpensesUI() {
+    // You can fetch the latest expenses data from the server and update the UI accordingly
+    // For example:
+    fetchExpensesData(userId)
+      .then((data) => {
+        // Update expensesList with the latest data from the server
+        expensesList = data;
+        // Update UI to display the updated expensesList
+        renderExpenses();
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  // Function to render expenses in the UI
+  function renderExpenses() {
+    // Clear existing expenses UI
+    tblRecord.innerHTML = "";
+    // Render expensesList in the UI
+    expensesList.forEach((expense) => {
+      addExpensesToUI(expense.description, expense.amount, expense.id);
+    });
   }
 
   // Function to add expenses to the UI
@@ -189,8 +157,6 @@ document.addEventListener("DOMContentLoaded", function () {
     totalExpenses += amount;
     expensesCard.textContent = totalExpenses.toFixed(2);
     updateBudget();
-    expensesList.push({ id, description, amount });
-    addEventListenersToButtons(li, id);
   }
 
   // Function to show error message
@@ -199,8 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Function to save budget data to the server
-  function saveBudgetData() {
-    const userId = localStorage.getItem("userId");
+  function saveBudgetData(userId) {
     const budgetData = {
       userId: userId,
       budget: budget,
@@ -218,6 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((response) => response.json())
       .then((data) => {
         console.log(data.message);
+        // Handle response if needed
       })
       .catch((error) => {
         console.error("Error:", error);
@@ -225,8 +191,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Function to fetch budget data from the server
-  function fetchBudgetData() {
-    fetch("http://localhost:3000/budget")
+  function fetchBudgetData(userId) {
+    fetch("http://localhost:3000/budget/" + userId)
       .then((response) => response.json())
       .then((data) => {
         if (data.error) {
@@ -244,6 +210,15 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
+  // Function to fetch expenses data from the server
+  function fetchExpensesData(userId) {
+    return fetch("http://localhost:3000/expenses/" + userId)
+      .then((response) => response.json())
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
   // Function to delete an expense from the server
   function deleteExpenseFromServer(expenseId) {
     fetch(`http://localhost:3000/expenses/${expenseId}`, {
@@ -252,19 +227,14 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((response) => response.json())
       .then((data) => {
         console.log(data.message);
+        // Handle response if needed
       })
       .catch((error) => {
         console.error("Error:", error);
       });
   }
 
-  // Function to save data to localStorage
-  function saveToLocalStorage() {
-    localStorage.setItem("budget", budget);
-    localStorage.setItem("totalExpenses", totalExpenses);
-    localStorage.setItem("balance", balance);
-    localStorage.setItem("itemId", itemId);
-    localStorage.setItem("expensesList", JSON.stringify(expensesList));
-    localStorage.setItem("selectedCurrency", selectedCurrency);
-  }
+  // Other functions like addEventListenersToButtons can be modified similarly
+
+  // Make sure to remove any remaining localStorage-related code
 });

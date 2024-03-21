@@ -151,6 +151,7 @@ app.post('/login', (req, res) => {
     }
   );
 });
+
 // Route to handle budget data operations
 app.post('/budget', (req, res) => {
   const { userId, budget, expenses, balance } = req.body;
