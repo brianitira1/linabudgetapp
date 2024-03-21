@@ -36,10 +36,11 @@ const registerUser = async (username, email, password) => {
     });
     const data = await response.json();
     console.log(data);
-    alert(data.message);
+   
     if (data.message === 'User registered successfully.') {
       // Clear the registration form
       document.getElementById('registerForm').reset();
+         window.location.href = 'http://localhost:5500/budgetapp.html';
     }
   } catch (error) {
     console.error('Error:', error);
@@ -60,7 +61,7 @@ const loginUser = async (email, password) => {
     const data = await response.json();
     console.log(data);
     if (data.message === 'Login successful.') {
-      alert(data.message);
+     
       // Store user session data in localStorage
       localStorage.setItem('isLoggedIn', true);
       localStorage.setItem('userId', data.user.id);
