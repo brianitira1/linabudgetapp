@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget App</title>
+  <link rel="stylesheet" href="app.css"> <!-- Link to the CSS file with styles from the second HTML file -->
+</head>
+<body>
+  <div class="container">
+    <h2>Budget App</h2>
+    <button id="logoutBtn">Logout</button>
+    <div class="error_message"></div>
+    <div class="currency-selector">
+      <label for="currency">Select Currency:</label>
+      <select id="currency-select">
+        <option value="USD">USD</option>
+        <option value="KSH">KSH</option>
+      </select>
+    </div>
+    <div class="budget_content">
+      <div class="ur_budget">
+        <form id="budget-form">
+          <label for="budget">Your Budget : </label>
+          <input
+            type="number"
+            placeholder="Enter Your Budget"
+            class="budget_input"
+            id="budget-input"
+          />
+          <button type="submit" class="btn" id="btn-budget">Calculate</button>
+        </form>
+      </div>
+      <div class="ur_expenses">
+        <form id="expenses-form">
+          <label for="expenses">Expenses Description : </label>
+          <input
+            type="text"
+            placeholder="Enter Your Expenses Description"
+            class="expenses_input"
+            id="expenses-desc"
+          />
+          <label for="expenses-amount">Expenses Amount : </label>
+          <input
+            type="number"
+            placeholder="Enter Your Expenses Amount"
+            class="expenses_amount"
+            id="expenses-amount"
+          />
+          <button type="submit" class="btn" id="btn-expenses">
+            Add Expenses
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="budget-summary">
+      <ul class="cards">
+        <li>
+          <i class="bx bx-money"></i>
+          <span class="info">
+            <h3><span id="budget-currency"></span><span class="budget_card">0</span></h3>
+            <p>Budget</p>
+          </span>
+        </li>
+        <li>
+          <i class="bx bx-credit-card"></i>
+          <span class="info">
+            <h3><span id="expenses-currency"></span><span class="expenses_card">0</span></h3>
+            <p>Expenses</p>
+          </span>
+        </li>
+        <li>
+          <i class="bx bx-dollar"></i>
+          <span class="info">
+            <h3><span id="balance-currency"></span><span class="balance_card">0</span></h3>
+            <p>Balance</p>
+          </span>
+        </li>
+      </ul>
+    </div>
+    <div class="tbl_content">
+      <h3>Budget Details</h3>
+      <div class="tbl_data">
+        <ul class="tbl_tr_content">
+          <!-- This will be dynamically populated -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="app.js"></script>
+</body>
+</html>

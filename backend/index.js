@@ -5,6 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const crypto = require('crypto');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'budgetapp',
 });
 
@@ -34,6 +36,9 @@ app.use(session({
   resave: false,
   saveUninitialized: true
 }));
+
+// Serve the HTML file
+app.use(express.static("./"));
 
 // Create database and tables
 pool.getConnection((err, connection) => {
@@ -61,7 +66,7 @@ pool.getConnection((err, connection) => {
       }
       console.log('Users table created successfully.');
 
-      // Create budget_data table 
+      // Create budget_data table
       connection.query(
         `
         CREATE TABLE IF NOT EXISTS budget_data (
@@ -81,7 +86,7 @@ pool.getConnection((err, connection) => {
             console.log('Budget_data table created successfully.');
           }
 
-          // Create expenses table 
+          // Create expenses table
           connection.query(
             `
             CREATE TABLE IF NOT EXISTS expenses (
@@ -108,7 +113,7 @@ pool.getConnection((err, connection) => {
 });
 
 // Route to handle user registration
-app.post('/register', (req, res) => {
+app.post('/api/register', (req, res) => {
   const { username, email, password } = req.body;
 
   // Insert user data into the database
@@ -127,7 +132,7 @@ app.post('/register', (req, res) => {
 });
 
 // Route to handle user login
-app.post('/login', (req, res) => {
+app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
   // Check if the user credentials exist in the database
@@ -153,8 +158,9 @@ app.post('/login', (req, res) => {
 });
 
 // Route to handle budget data operations
-app.post('/budget', (req, res) => {
-  const { userId, budget, expenses, balance } = req.body;
+app.put('/api/budget/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const { budget, expenses, balance } = req.body;
 
   // Insert or update budget data in the database
   pool.query(
@@ -172,13 +178,8 @@ app.post('/budget', (req, res) => {
 });
 
 // Route to retrieve budget data for a user
-app.get('/budget', (req, res) => {
-  const userId = req.session.userId;
-
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized access.' });
-    return;
-  }
+app.get('/api/budget/:userId', (req, res) => {
+  const userId = req.params.userId;
 
   // Retrieve budget data from the database
   pool.query(
@@ -200,13 +201,9 @@ app.get('/budget', (req, res) => {
 });
 
 // Route to handle expense creation
-app.post('/expenses', (req, res) => {
-  const { userId, description, amount } = req.body;
-
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized access.' });
-    return;
-  }
+app.post('/api/expenses/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const { description, amount } = req.body;
 
   // Insert a new expense into the database
   pool.query(
@@ -223,15 +220,34 @@ app.post('/expenses', (req, res) => {
   );
 });
 
-// Route to handle expense deletion
-app.delete('/expenses/:expenseId', (req, res) => {
-  const expenseId = req.params.expenseId;
-  const userId = req.session.userId;
 
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized access.' });
-    return;
-  }
+
+
+
+// Route to retrieve expenses data for a user
+app.get('/api/expenses/:userId', (req, res) => {
+  const userId = req.params.userId;
+
+  // Retrieve expenses data from the database for the specified user ID
+  pool.query(
+    'SELECT description, amount, id FROM expenses WHERE user_id = ?',
+    [userId],
+    (error, results, fields) => {
+      if (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while retrieving expenses data.' });
+        return;
+      }
+      res.status(200).json(results);
+    }
+  );
+});
+
+
+// Route to handle expense deletion
+app.delete('/api/expenses/:userId/:expenseId', (req, res) => {
+  const expenseId = req.params.expenseId;
+  const userId = req.params.userId;
 
   // Delete the expense from the database
   pool.query(
@@ -253,15 +269,10 @@ app.delete('/expenses/:expenseId', (req, res) => {
 });
 
 // Route to handle expense update
-app.put('/expenses/:expenseId', (req, res) => {
+app.put('/api/expenses/:userId/:expenseId', (req, res) => {
   const expenseId = req.params.expenseId;
+  const userId = req.params.userId;
   const { description, amount } = req.body;
-  const userId = req.session.userId;
-
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized access.' });
-    return;
-  }
 
   // Update the expense in the database
   pool.query(
